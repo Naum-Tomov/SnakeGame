@@ -2,6 +2,7 @@ import javax.swing.*;
 
 public class SnakeFrame extends JFrame {
 
+
     public SnakeFrame() {
         this.add(new SnakePanel());
         this.setTitle("Snake");

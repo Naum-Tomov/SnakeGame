@@ -13,24 +13,27 @@ public class SnakePanel extends JPanel implements ActionListener {
     static final int WIDTH = 1280;
     static final int HEIGHT = 720;
     static final int UNIT_SIZE = 20;
-    int delay = 50;
+    int delay;
     final int[] x = new int[(WIDTH*HEIGHT/UNIT_SIZE)];
     final int[] y = new int[(HEIGHT*WIDTH/UNIT_SIZE)];
-    int bodyParts = 6;
-    int applesEaten = 0;
+    int bodyParts;
+    int applesEaten;
     int appleX;
     int appleY;
-    char direction = 'R';
+    char direction;
     volatile boolean running = false;
     Random random;
     Timer timer;
-    Queue<Character> commandQueue = new LinkedList<>();
+    Queue<Character> commandQueue;
+
+
 
 
     /**
      * Constructor for the Snake Panel class.
      */
     public SnakePanel() {
+        commandQueue = new LinkedList<>();
         random = new Random();
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setBackground(Color.black);
@@ -43,19 +46,38 @@ public class SnakePanel extends JPanel implements ActionListener {
      * Starts the game.
      */
     public void startGame() {
+        x[0] = 0;
+        y[0] = 0;
+        applesEaten = 0;
+        bodyParts = 6;
+        delay = 50;
+        direction = 'R';
         running = true;
         newApple();
         timer = new Timer(delay,this);
         timer.start();
     }
 
+    public void reset() {
+        timer.stop();
+        startGame();
+    }
+
+
     /**
      * Sets the coordinates of the apple to random coordinates.
+     * @ensures the apple will not spawn inside the body of the snake.
      * @ensures the apple will appear on the panel
      */
     public void newApple() {
-        appleX = random.nextInt(WIDTH/UNIT_SIZE)*UNIT_SIZE;
-        appleY = random.nextInt(HEIGHT/UNIT_SIZE)*UNIT_SIZE;
+        boolean inBody = true;
+        while (inBody){
+            appleX = random.nextInt(WIDTH/UNIT_SIZE)*UNIT_SIZE;
+            appleY = random.nextInt(HEIGHT/UNIT_SIZE)*UNIT_SIZE;
+            for (int f = 1; f<bodyParts; f++) {
+                inBody = appleX == x[f] && appleY == y[f];
+            }
+        }
     }
 
     /**
@@ -107,13 +129,14 @@ public class SnakePanel extends JPanel implements ActionListener {
     }
 
     /**
-     * Moves the snake in the current set direction
+     * Moves the snake in the current set direction.
+     *   If the commandQueue is not empty, it consumes a command from it. This is done in order to avoid
+     *   doing more than 1 switch in direction without changing a position on the board.
      * @requires direction == 'R' || direction == 'L' || direction == 'U' || direction == 'D'
      */
     public void move() {
         boolean set = false;
         while (commandQueue.size() > 0) {
-            System.out.println(commandQueue);
              switch (commandQueue.remove()) {
                  case 'L':
                      if (direction != 'R' && direction != 'L') {
@@ -149,6 +172,7 @@ public class SnakePanel extends JPanel implements ActionListener {
             x[bodyPart] = x[bodyPart - 1];
             y[bodyPart] = y[bodyPart - 1];
         }
+        // head moves in the direction
         switch(direction) {
             case 'L':
                 x[0] -= UNIT_SIZE;
@@ -202,6 +226,11 @@ public class SnakePanel extends JPanel implements ActionListener {
         
     }
 
+
+    /**
+     * Is displayed when the game is over.
+     * @param g - the graphics used to draw the game over screen.
+     */
     public void gameOver(Graphics g) {
         //Score
         g.setColor(Color.red);
@@ -209,12 +238,20 @@ public class SnakePanel extends JPanel implements ActionListener {
         FontMetrics metrics1 = getFontMetrics(g.getFont());
         g.drawString("Score: "+applesEaten, (WIDTH - metrics1.stringWidth("Score: "+applesEaten))/2, g.getFont().getSize());
         //Game Over text
-        g.setColor(Color.red);
         g.setFont( new Font("Helvetica",Font.BOLD, 75));
         FontMetrics metrics2 = getFontMetrics(g.getFont());
         g.drawString("Game Over", (WIDTH - metrics2.stringWidth("Game Over"))/2, HEIGHT/2);
+        //Restart text
+        g.setColor(Color.white);
+        g.setFont( new Font("Helvetica",Font.BOLD, 30));
+        FontMetrics metrics3 = getFontMetrics(g.getFont());
+        g.drawString("Press R to restart", (WIDTH - metrics3.stringWidth("Press R to restart"))/2, HEIGHT/2 + 75);
     }
 
+    /**
+     * Checks if the head is in the same position as the apple. If so, increments the length of the snake, the score
+     *   and spawns a new apple.
+     */
     public void checkApple() {
         if (x[0] == appleX && y[0] == appleY) {
             applesEaten++;
@@ -222,6 +259,26 @@ public class SnakePanel extends JPanel implements ActionListener {
             newApple();
         }
     }
+
+
+    /**
+     * Gradually increases the difficulty of the game, by decreasing the timer delay.
+     */
+    private void increaseDifficulty() {
+        if (applesEaten > 10 && applesEaten < 20) {
+            timer.setDelay(40);
+        }
+        else if (applesEaten >= 20 && applesEaten < 30) {
+            timer.setDelay(35);
+        }
+        else if (applesEaten >= 30 && applesEaten < 50) {
+            timer.setDelay(30);
+        }
+        else if (applesEaten >= 50) {
+            timer.setDelay(25);
+        }
+    }
+
 
 
     /**
@@ -234,6 +291,7 @@ public class SnakePanel extends JPanel implements ActionListener {
             move();
             checkCollisions();
             checkApple();
+            increaseDifficulty();
         }
         repaint();
 
@@ -241,6 +299,10 @@ public class SnakePanel extends JPanel implements ActionListener {
 
 
     public class MyKeyAdapter extends KeyAdapter {
+        /**
+         * Based on user input, adds commands to the command queue.
+         * @param e - the keypress that triggers the call to this method.
+         */
         @Override
         public void keyPressed(KeyEvent e){
             switch (e.getKeyCode()) {
@@ -255,6 +317,11 @@ public class SnakePanel extends JPanel implements ActionListener {
                     break;
                 case KeyEvent.VK_DOWN:
                     commandQueue.add('D');
+                    break;
+                case KeyEvent.VK_R:
+                    if (!running){
+                        reset();
+                    }
                     break;
             }
         }
