@@ -20,12 +20,12 @@ public class SnakePanel extends JPanel implements ActionListener {
     int applesEaten;
     int appleX;
     int appleY;
-    char direction;
+    char direction = 'R';
     volatile boolean running = false;
     Random random;
     Timer timer;
     Queue<Character> commandQueue;
-
+    volatile boolean automatic = false;
 
 
 
@@ -280,6 +280,33 @@ public class SnakePanel extends JPanel implements ActionListener {
     }
 
 
+    /**
+     * Gives a naive AI that simply chases the apple.
+     */
+    public void naiveMove() {
+        if (direction == 'L' || direction == 'R') {
+            if (x[0] == appleX) {
+                if (y[0] > appleY) {
+                    direction = 'U';
+                }
+                else {
+                    direction = 'D';
+                }
+            }
+        }
+        else {
+            if (y[0] == appleY) {
+                if (x[0] > appleX) {
+                    direction = 'L';
+                }
+                else {
+                    direction = 'R';
+                }
+            }
+        }
+    }
+
+
 
     /**
      * Invoked when an action occurs.
@@ -288,6 +315,9 @@ public class SnakePanel extends JPanel implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if(running) {
+            if (automatic) {
+                naiveMove();
+            }
             move();
             checkCollisions();
             checkApple();
@@ -323,6 +353,13 @@ public class SnakePanel extends JPanel implements ActionListener {
                         reset();
                     }
                     break;
+                case KeyEvent.VK_A:
+                    if (automatic) {
+                        automatic = false;
+                    }
+                    else {
+                        automatic = true;
+                    }
             }
         }
     }
